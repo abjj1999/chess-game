@@ -1,12 +1,16 @@
 import { useEffect, useState } from "react";
 import styles from "./board.module.scss";
 import { p0, pw, pb, chess, getBoard } from "utils/chess-utils";
+import { calculateBestMove, initGame } from "chess-ai";
+import Loader from "./Loader";
 export default function Board() {
     const [pieces, setPieces] = useState(
         new Array(8).fill(0).map(() => new Array(8).fill(""))
     );
     const [highlighted, setHighlighted] = useState<string[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
     useEffect(() => {
+        initGame(chess, 0);
         setPieces(getBoard());
     }, []);
     return (
@@ -39,7 +43,16 @@ export default function Board() {
                                     if (highlighted.slice(1).includes(square)) {
                                         chess.move({to: square, from: highlighted[0]});
                                         setPieces(getBoard());
-                                        setHighlighted([]);
+                                        setIsLoading(true);
+                                        setTimeout(() => {
+                                            const bestAImove = calculateBestMove();
+                                            //@ts-ignore
+                                            if(bestAImove) chess.move(bestAImove);
+                                            setPieces(getBoard());
+                                            setHighlighted([]);
+                                            setIsLoading(false);
+
+                                        }, 1000)
                                     }else if(p && chess.turn() == c) {
 
                                         const mvs = chess.moves({
@@ -62,6 +75,7 @@ export default function Board() {
                     })}
                 </div>
             ))}
+            <Loader hidden = {!isLoading} />
         </div>
     );
 }

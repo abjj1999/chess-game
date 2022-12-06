@@ -1,0 +1,30 @@
+.loader {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    pointer-events: all;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    div {
+        width: 20vmin;
+        height: 20vmin;
+        border-radius: 50%;
+        background-color: skyblue;
+        animation: laoding 1s infinite alternate;
+    }
+    @keyframes laoding {
+        to {
+            opacity: 1;
+            transform: scale(1.5, 1.5);
+        }
+        from {
+            opacity: 0;
+            transform: scale(1, 1);
+        }
+    }
+}
