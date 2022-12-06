@@ -1,0 +1,20 @@
+.board {
+    width: 100vmin;
+    height: 100vmin;
+    margin: auto;
+    .row {
+        display: flex;
+        height: 12%;
+    }
+    .col {
+        width: 12%;
+        color: red;
+        font-size: 10vmin;
+    }
+    .w {
+        background-color: white;
+    }
+    .b {
+        background-color: black;
+    }
+}
