@@ -18,12 +18,39 @@ export default function Board() {
         workerRef.current.postMessage("hello from UI");
         initGame(chess, 0);
         setPieces(getBoard());
+        console.log(getBoard());
         return () => {
             workerRef.current?.terminate();
         }
     }, []);
+    const [color, setColor] = useState("w");
+    const [inCheck, setInCheck] = useState(false);
+
+
+    const makeMove = (mv:any, isAI:boolean) => {
+    const move = chess.move(mv);
+    setPieces(getBoard());
+    setHighlighted([move?.to, move?.from]);
+    setIsLoading(!isAI);
+    setColor(move?.color || 'w')
+    // setTurn(chess.turn());
+    setInCheck(chess.inCheck());
+    if (chess.isGameOver()) {
+      setTimeout(() => {
+        alert("Game Over");
+        chess.reset();
+        // setTurn("b");
+        setInCheck(false);
+        setPieces(getBoard());
+        setHighlighted([]);
+        setIsLoading(false);
+      }, 100);
+    }
+    }
+
+
     return (
-        <div className={styles.board}>
+        <div className={[styles.board, color == 'b' ? styles.tb : styles.tw, inCheck ? styles.inCheck : ''].join(" ")}>
             {new Array(8).fill(0).map((_, i) => (
                 <div className={styles.row} key={i}>
                     {new Array(8).fill(0).map((_, j) => {
@@ -51,21 +78,18 @@ export default function Board() {
                                 onClick={() => {
                                     if (highlighted.slice(1).includes(square)) {
                                         //@ts-ignore
-                                        chess.move({to: square, from: highlighted[0]});
-                                        setPieces(getBoard());
-                                        setIsLoading(true);
+                                        makeMove({
+                                            to: square, from: highlighted[0]
+                                        }, false)
                                         setTimeout(() => {
                                             const bestAImove = calculateBestMove();
                                             //@ts-ignore
-                                            if(bestAImove){
-                                            const move =  chess.move(bestAImove);
-                                            setPieces(getBoard());
-                                            setHighlighted([move?.to, move?.from]);
+                                            if (bestAImove) {
+                                                makeMove(bestAImove, true);
                                             }
-                                            setIsLoading(false);
 
                                         }, 1000)
-                                    }else if(p && chess.turn() == c) {
+                                    } else if (p && chess.turn() == c) {
 
                                         const mvs = chess.moves({
                                             //@ts-ignore
@@ -75,7 +99,7 @@ export default function Board() {
                                         }) as Move[];
                                         // console.log(mvs);
                                         setHighlighted([square, ...mvs.map(({ to }) => to)]);
-                                    } 
+                                    }
                                     else {
                                         setHighlighted([]);
                                     }
@@ -87,7 +111,7 @@ export default function Board() {
                     })}
                 </div>
             ))}
-            <Loader hidden = {!isLoading} />
+            <Loader hidden={!isLoading} />
         </div>
     );
 }
