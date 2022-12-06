@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import styles from "./board.module.scss";
 import { p0, pw, pb, chess, getBoard } from "utils/chess-utils";
 import { calculateBestMove, initGame } from "chess-ai";
@@ -7,11 +7,20 @@ export default function Board() {
     const [pieces, setPieces] = useState(
         new Array(8).fill(0).map(() => new Array(8).fill(""))
     );
-    const [highlighted, setHighlighted] = useState<string[]>([]);
+    const workerRef = useRef<Worker>();
+    const [highlighted, setHighlighted] = useState<(string | undefined)[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     useEffect(() => {
+        workerRef.current = new Worker(new URL("../utils/worker.ts", import.meta.url));
+        workerRef.current.onmessage = (event: MessageEvent) => {
+            console.log("hi from UI", event);
+        }
+        workerRef.current.postMessage("hello from UI");
         initGame(chess, 0);
         setPieces(getBoard());
+        return () => {
+            workerRef.current?.terminate();
+        }
     }, []);
     return (
         <div className={styles.board}>
@@ -36,20 +45,23 @@ export default function Board() {
                                     styles.col,
                                     (i + j) % 2 === 0 ? styles.w : styles.b,
                                     p && chess.turn() == c && styles.pointer,
-                                    highlighted.slice(1).includes(square) && styles.highlighted,
+                                    highlighted.includes(square) && styles.highlighted,
                                 ].join(" ")}
                                 key={`${i}, ${j}`}
                                 onClick={() => {
                                     if (highlighted.slice(1).includes(square)) {
+                                        //@ts-ignore
                                         chess.move({to: square, from: highlighted[0]});
                                         setPieces(getBoard());
                                         setIsLoading(true);
                                         setTimeout(() => {
                                             const bestAImove = calculateBestMove();
                                             //@ts-ignore
-                                            if(bestAImove) chess.move(bestAImove);
+                                            if(bestAImove){
+                                            const move =  chess.move(bestAImove);
                                             setPieces(getBoard());
-                                            setHighlighted([]);
+                                            setHighlighted([move?.to, move?.from]);
+                                            }
                                             setIsLoading(false);
 
                                         }, 1000)
