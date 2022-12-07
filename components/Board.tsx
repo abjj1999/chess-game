@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import styles from "./board.module.scss";
-import { p0, pw, pb, chess, getBoard } from "utils/chess-utils";
+import { p0, pw, pb, chess, getBoard, ranks, files } from "utils/chess-utils";
 import { calculateBestMove, initGame } from "chess-ai";
 import Loader from "./Loader";
+import Cell from "./Cell";
 export default function Board() {
     const [pieces, setPieces] = useState(
         new Array(8).fill(0).map(() => new Array(8).fill(""))
@@ -10,6 +11,8 @@ export default function Board() {
     const workerRef = useRef<Worker>();
     const [highlighted, setHighlighted] = useState<(string | undefined)[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    // const [isTwoPlayer, setIsTwoPlayer] = useState(true);
+    const isTwoPlayer = false;
     useEffect(() => {
         workerRef.current = new Worker(new URL("../utils/worker.ts", import.meta.url));
         workerRef.current.onmessage = (event: MessageEvent) => {
@@ -23,17 +26,23 @@ export default function Board() {
             workerRef.current?.terminate();
         }
     }, []);
-    const [color, setColor] = useState("w");
+    // const [color, setColor] = useState("w");
+    const [turn, setTurn] = useState("w");
     const [inCheck, setInCheck] = useState(false);
-
+    const [movesWithPromotion, setMovesWithPromotion] = useState<string[]>([]);
 
     const makeMove = (mv:any, isAI:boolean) => {
-    const move = chess.move(mv);
+        let move;
+        if(!isAI && movesWithPromotion.includes(mv.to)){
+            chess.move({ ...mv, promotion: "q" });
+        }else {
+            move = chess.move(mv);
+        }
     setPieces(getBoard());
     setHighlighted([move?.to, move?.from]);
     setIsLoading(!isAI);
-    setColor(move?.color || 'w')
-    // setTurn(chess.turn());
+    // setColor(move?.color || 'w')
+    setTurn(chess.turn());
     setInCheck(chess.inCheck());
     if (chess.isGameOver()) {
       setTimeout(() => {
@@ -48,67 +57,63 @@ export default function Board() {
     }
     }
 
+    const handleClick = (square: string, shouldGetMoves: boolean) => {
+        {
+            if (highlighted.slice(1).includes(square)) {
+                //@ts-ignore
+                makeMove({
+                    to: square, from: highlighted[0]
+                }, false)
+                setTimeout(() => {
+                    if(isTwoPlayer){
+                        setIsLoading(false);
+                        
+                    }else {
+                        const bestAImove = calculateBestMove();
+                        //@ts-ignore
+                        if (bestAImove) {
+                            makeMove(bestAImove, true);
+                        }
+
+                    }
+
+                }, 0)
+            } else if (shouldGetMoves) {
+
+                const mvs = chess.moves({
+                    //@ts-ignore
+                    square: square,
+                    verbose: true,
+                    //@ts-ignore
+                }) as Move[];
+                // console.log(mvs);
+                setHighlighted([square, ...mvs.map(({ to }) => to)]);
+                setMovesWithPromotion(mvs.filter(({flags}) => flags.includes('p')).map(({to}) => to));
+            }
+            else {
+                setHighlighted([]);
+            }
+        }
+    }
+
 
     return (
-        <div className={[styles.board, color == 'b' ? styles.tb : styles.tw, inCheck ? styles.inCheck : ''].join(" ")}>
-            {new Array(8).fill(0).map((_, i) => (
+        <div className={[styles.board, turn == 'b' ? styles.tb : styles.tw, inCheck ? styles.inCheck : ''].join(" ")}>
+            {ranks.map((rank, i) => (
                 <div className={styles.row} key={i}>
-                    {new Array(8).fill(0).map((_, j) => {
-                        let p = pieces[i][j];
-                        let c = "";
-                        if (p === ".") {
-                            p = "";
-                        } else if (p.match(/[A-Z]/)) {
-                            p = pw[p0.indexOf(p.toLowerCase())];
-                            c = "w";
-                        } else {
-                            p = pb[p0.indexOf(p)];
-                            c = "b";
-                        }
-                        const square = `${"abcdefgh".charAt(j)}${8 - i}`;
-                        return (
-                            <div
-                                className={[
-                                    styles.col,
-                                    (i + j) % 2 === 0 ? styles.w : styles.b,
-                                    p && chess.turn() == c && styles.pointer,
-                                    highlighted.includes(square) && styles.highlighted,
-                                ].join(" ")}
-                                key={`${i}, ${j}`}
-                                onClick={() => {
-                                    if (highlighted.slice(1).includes(square)) {
-                                        //@ts-ignore
-                                        makeMove({
-                                            to: square, from: highlighted[0]
-                                        }, false)
-                                        setTimeout(() => {
-                                            const bestAImove = calculateBestMove();
-                                            //@ts-ignore
-                                            if (bestAImove) {
-                                                makeMove(bestAImove, true);
-                                            }
-
-                                        }, 1000)
-                                    } else if (p && chess.turn() == c) {
-
-                                        const mvs = chess.moves({
-                                            //@ts-ignore
-                                            square: square,
-                                            verbose: true,
-                                            //@ts-ignore
-                                        }) as Move[];
-                                        // console.log(mvs);
-                                        setHighlighted([square, ...mvs.map(({ to }) => to)]);
-                                    }
-                                    else {
-                                        setHighlighted([]);
-                                    }
-                                }}
-                            >
-                                {p}
-                            </div>
-                        );
-                    })}
+                    {files.map((file, j) => (
+                         <Cell
+                         key={`${i},${j}`}
+                         {...{
+                           piece: pieces[i][j],
+                           square: file + rank,
+                           handleClick,
+                           highlighted,
+                           turn,
+                           isWhite: (i + j) % 2 == 0,
+                         }}
+                       />
+                    ))}
                 </div>
             ))}
             <Loader hidden={!isLoading} />
