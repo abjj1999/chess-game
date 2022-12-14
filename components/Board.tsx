@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import styles from "./board.module.scss";
 import { p0, pw, pb, chess, getBoard, ranks, files } from "utils/chess-utils";
-import { calculateBestMove, initGame } from "chess-ai";
+// import { calculateBestMove, initGame } from "chess-ai";
 import Loader from "./Loader";
 import Cell from "./Cell";
 export default function Board() {
@@ -12,14 +12,14 @@ export default function Board() {
     const [highlighted, setHighlighted] = useState<(string | undefined)[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     // const [isTwoPlayer, setIsTwoPlayer] = useState(true);
-    const isTwoPlayer = false;
+    const isTwoPlayer = true;
     useEffect(() => {
         workerRef.current = new Worker(new URL("../utils/worker.ts", import.meta.url));
         workerRef.current.onmessage = (event: MessageEvent) => {
             console.log("hi from UI", event);
         }
         workerRef.current.postMessage("hello from UI");
-        initGame(chess, 0);
+        // initGame(chess, 0);
         setPieces(getBoard());
         console.log(getBoard());
         return () => {
@@ -69,11 +69,7 @@ export default function Board() {
                         setIsLoading(false);
                         
                     }else {
-                        const bestAImove = calculateBestMove();
-                        //@ts-ignore
-                        if (bestAImove) {
-                            makeMove(bestAImove, true);
-                        }
+                        
 
                     }
 
